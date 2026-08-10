@@ -46,7 +46,7 @@ class SignHelper
         $privateKey = self::readKey($privateKey);
 
         // 如果已经是 PEM 格式
-        if (str_contains($privateKey, '-----BEGIN')) {
+        if (strpos($privateKey, '-----BEGIN') !== false) {
             return $privateKey;
         }
 
@@ -68,7 +68,7 @@ class SignHelper
         $publicKey = self::readKey($publicKey);
 
         // 如果已经是 PEM 格式
-        if (str_contains($publicKey, '-----BEGIN')) {
+        if (strpos($publicKey, '-----BEGIN') !== false) {
             return $publicKey;
         }
 

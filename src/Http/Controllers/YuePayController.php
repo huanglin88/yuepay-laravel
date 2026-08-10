@@ -16,10 +16,17 @@ use YuePay\Exceptions\YuePayException;
  */
 class YuePayController extends Controller
 {
-    public function __construct(
-        private YuePayService $yuePay,
-        private CallbackHandler $callback,
-    ) {}
+    /** @var YuePayService */
+    private $yuePay;
+
+    /** @var CallbackHandler */
+    private $callback;
+
+    public function __construct(YuePayService $yuePay, CallbackHandler $callback)
+    {
+        $this->yuePay = $yuePay;
+        $this->callback = $callback;
+    }
 
     /**
      * 创建支付订单（统一下单）

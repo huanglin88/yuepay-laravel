@@ -4,8 +4,8 @@
 
 ## 环境要求
 
-- PHP >= 8.0
-- Laravel >= 9.0
+- PHP >= 7.3
+- Laravel >= 6.0
 - ext-openssl 扩展
 
 ## 安装

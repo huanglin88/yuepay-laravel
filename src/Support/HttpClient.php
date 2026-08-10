@@ -17,7 +17,8 @@ use YuePay\Exceptions\YuePayException;
  */
 class HttpClient
 {
-    private array $config;
+    /** @var array */
+    private $config;
 
     public function __construct(array $config)
     {

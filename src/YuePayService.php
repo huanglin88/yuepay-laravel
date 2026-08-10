@@ -38,7 +38,8 @@ class YuePayService
     private const URI_REFUND        = '/api/refund/refundOrder';
     private const URI_QUERY_REFUND  = '/api/refund/query';
 
-    private HttpClient $client;
+    /** @var HttpClient */
+    private $client;
 
     public function __construct(HttpClient $client)
     {
@@ -102,7 +103,9 @@ class YuePayService
         }
 
         // 过滤空字符串（保留0值）
-        $requestData = array_filter($requestData, fn($v) => $v !== '');
+        $requestData = array_filter($requestData, function ($v) {
+            return $v !== '';
+        });
 
         return $this->client->post(self::URI_UNIFIED_ORDER, $requestData);
     }
@@ -195,7 +198,9 @@ class YuePayService
         ];
 
         // 过滤空值
-        $requestData = array_filter($requestData, fn($v) => $v !== '');
+        $requestData = array_filter($requestData, function ($v) {
+            return $v !== '';
+        });
 
         return $this->client->post(self::URI_REFUND, $requestData);
     }
@@ -252,7 +257,7 @@ class YuePayService
         }
 
         $request = request();
-        $ip = $request?->ip();
+        $ip = $request->ip();
 
         return $ip ?: '127.0.0.1';
     }
