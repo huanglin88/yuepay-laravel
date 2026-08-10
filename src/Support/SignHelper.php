@@ -38,47 +38,61 @@ class SignHelper
     }
 
     /**
+     * 格式化密钥为 PEM 格式（统一处理私钥和公钥）
+     *
+     * 无论输入是纯 Base64 还是已有 PEM 头尾，都重新规范化：
+     * 去除所有空白 → 按 64 字符换行 → 包装标准 PEM 头尾
+     */
+    private static function formatPem(string $key): string
+    {
+        $key = trim($key);
+
+        // 已有 PEM 头尾：提取头尾类型，去除中间空白后重新格式化
+        if (preg_match('/-----BEGIN ([A-Z ]+)-----/', $key, $headerMatches) &&
+            preg_match('/-----END ([A-Z ]+)-----/', $key, $footerMatches)) {
+            $header = "-----BEGIN {$headerMatches[1]}-----";
+            $footer = "-----END {$footerMatches[1]}-----";
+
+            // 取出头尾之间的内容，去除所有空白
+            $start = strpos($key, $header) + strlen($header);
+            $end   = strrpos($key, $footer);
+            $body  = substr($key, $start, $end - $start);
+            $body  = preg_replace('/\s+/', '', $body);
+        } else {
+            // 纯 Base64，默认类型
+            $header = "-----BEGIN PRIVATE KEY-----";
+            $footer = "-----END PRIVATE KEY-----";
+            $body   = preg_replace('/\s+/', '', $key);
+        }
+
+        return $header . "\n" . chunk_split($body, 64, "\n") . $footer . "\n";
+    }
+
+    /**
      * 格式化私钥为 PEM 格式
-     * 支持纯 Base64 字符串（无头尾标记）和完整 PEM 格式
      */
     public static function formatPrivateKey(string $privateKey): string
     {
-        $privateKey = self::readKey($privateKey);
-
-        // 如果已经是 PEM 格式
-        if (strpos($privateKey, '-----BEGIN') !== false) {
-            return $privateKey;
-        }
-
-        // 纯 Base64 字符串，添加 PEM 头尾
-        $privateKey = str_replace(["\r", "\n", " "], '', $privateKey);
-        $formatted = "-----BEGIN PRIVATE KEY-----\n";
-        $formatted .= chunk_split($privateKey, 64, "\n");
-        $formatted .= "-----END PRIVATE KEY-----\n";
-
-        return $formatted;
+        return self::formatPem(self::readKey($privateKey));
     }
 
     /**
      * 格式化公钥为 PEM 格式
-     * 支持纯 Base64 字符串（无头尾标记）和完整 PEM 格式
      */
     public static function formatPublicKey(string $publicKey): string
     {
-        $publicKey = self::readKey($publicKey);
+        $key = self::formatPem(self::readKey($publicKey));
 
-        // 如果已经是 PEM 格式
-        if (strpos($publicKey, '-----BEGIN') !== false) {
-            return $publicKey;
+        // 如果解析出来是 PRIVATE KEY 头，替换为 PUBLIC KEY
+        if (strpos($key, 'PRIVATE KEY') !== false) {
+            $key = str_replace(
+                ['-----BEGIN PRIVATE KEY-----', '-----END PRIVATE KEY-----'],
+                ['-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----'],
+                $key
+            );
         }
 
-        // 纯 Base64 字符串，添加 PEM 头尾
-        $publicKey = str_replace(["\r", "\n", " "], '', $publicKey);
-        $formatted = "-----BEGIN PUBLIC KEY-----\n";
-        $formatted .= chunk_split($publicKey, 64, "\n");
-        $formatted .= "-----END PUBLIC KEY-----\n";
-
-        return $formatted;
+        return $key;
     }
 
     /**
