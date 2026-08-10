@@ -145,4 +145,20 @@ class HttpClient
     {
         return $this->config;
     }
+
+    /**
+     * 生成带签名的完整请求 URL（用于 GET/跳转类接口）
+     *
+     * @param string $uri    接口路径
+     * @param array  $params 业务参数
+     * @return string 完整URL（含签名参数）
+     */
+    public function buildUrl(string $uri, array $params = []): string
+    {
+        $params = $this->injectCommonParams($params);
+        $params['sign'] = SignHelper::sign($params, $this->config['private_key']);
+
+        $base = rtrim($this->config['base_url'], '/');
+        return $base . '/' . ltrim($uri, '/') . '?' . http_build_query($params);
+    }
 }

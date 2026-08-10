@@ -129,6 +129,46 @@ class CallbackHandler
     }
 
     /**
+     * 解析转账回调数据
+     *
+     * 返回标准化结构：
+     * [
+     *   'transferId'       => 粤收付转账订单号,
+     *   'mchOrderNo'       => 商户转账单号,
+     *   'amount'           => 转账金额（分）,
+     *   'state'            => 转账状态（2=成功, 3=失败）,
+     *   'accountNo'        => 收款账号,
+     *   'accountName'      => 收款方姓名,
+     *   'channelOrderNo'   => 渠道转账单号,
+     *   'successTime'      => 转账成功时间,
+     *   'errCode'          => 错误码,
+     *   'errMsg'           => 错误描述,
+     *   'rawData'          => 原始数据,
+     * ]
+     *
+     * @param array $data 已验签的回调数据
+     * @return array
+     */
+    public function parseTransferNotify(array $data): array
+    {
+        $notifyData = $data['data'] ?? $data;
+
+        return [
+            'transferId'     => $notifyData['transferId'] ?? '',
+            'mchOrderNo'     => $notifyData['mchOrderNo'] ?? '',
+            'amount'         => (int) ($notifyData['amount'] ?? 0),
+            'state'          => $notifyData['state'] ?? 0,
+            'accountNo'      => $notifyData['accountNo'] ?? '',
+            'accountName'    => $notifyData['accountName'] ?? '',
+            'channelOrderNo' => $notifyData['channelOrderNo'] ?? '',
+            'successTime'    => $notifyData['successTime'] ?? null,
+            'errCode'        => $notifyData['errCode'] ?? '',
+            'errMsg'         => $notifyData['errMsg'] ?? '',
+            'rawData'        => $data,
+        ];
+    }
+
+    /**
      * 生成成功响应（返回给粤收付平台）
      * 平台要求返回 "success" 表示已正确接收通知
      */

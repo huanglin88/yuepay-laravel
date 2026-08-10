@@ -10,10 +10,12 @@ use YuePay\Support\HttpClient;
  *
  * 封装粤收付开放平台全部接口：
  * - 统一下单（支持支付宝/微信多种支付方式）
- * - 支付订单查询
- * - 关闭订单
- * - 退款申请
- * - 退款查询
+ * - 支付订单查询 / 关闭订单
+ * - 退款申请 / 退款查询
+ * - 转账下单 / 转账查询 / 转账余额查询
+ * - 手动���现 / 提现查询 / 余额查询
+ * - 绑定分账用户 / 发起分账 / 查询分账 / 分账用户余额查询 / 分账用户余额提现
+ * - 条码换openId / 获取渠道用户ID
  *
  * 支付方式 wayCode 对照表：
  * - ALI_JSAPI  支付宝JSAPI（小程序/生活号）
@@ -37,6 +39,23 @@ class YuePayService
     private const URI_CLOSE_ORDER   = '/api/pay/close';
     private const URI_REFUND        = '/api/refund/refundOrder';
     private const URI_QUERY_REFUND  = '/api/refund/query';
+    // 转账
+    private const URI_TRANSFER_ORDER          = '/api/transferOrder';
+    private const URI_QUERY_TRANSFER          = '/api/transfer/query';
+    private const URI_TRANSFER_BALANCE        = '/api/transfer/balance/query';
+    // 提现
+    private const URI_CASHOUT_ORDER           = '/api/cashout/order/create';
+    private const URI_QUERY_CASHOUT           = '/api/cashout/order/query';
+    private const URI_CASHOUT_BALANCE         = '/api/cashout/balance/query';
+    // 分账
+    private const URI_BIND_DIVISION_RECEIVER  = '/api/division/receiver/bind';
+    private const URI_DIVISION_EXEC           = '/api/division/exec';
+    private const URI_QUERY_DIVISION          = '/api/division/query';
+    private const URI_DIVISION_RECEIVER_BALANCE = '/api/division/receiver/channelBalanceQuery';
+    private const URI_DIVISION_RECEIVER_CASHOUT = '/api/division/receiver/channelBalanceCashout';
+    // 支付辅助
+    private const URI_QUERY_OPENID_BY_BARCODE = '/api/pay/queryOpenIdByBarcode';
+    private const URI_CHANNEL_USERID_JUMP     = '/api/channelUserId/jump';
 
     /** @var HttpClient */
     private $client;
@@ -229,6 +248,381 @@ class YuePayService
         }
 
         return $this->client->post(self::URI_QUERY_REFUND, $params);
+    }
+
+    /**
+     * 转账下单
+     *
+     * @param array $params 转账参数：
+     *   - mchOrderNo   string  商户转账单号（必填）
+     *   - amount       int     转账金额，单位：分（必填）
+     *   - accountNo    string  收款账号（微信openid或银行卡号）
+     *   - accountName  string  收款方姓名
+     *   - ifCode       string  接口代码（如 wxpay, alipay）
+     *   - entryType    string  入账方式（如 WX_CASH 微信零钱, BANK_CARD 银行卡）
+     *   - bankName     string  银行名称（银行卡转账时必填）
+     *   - clientIp     string  客户端IP
+     *   - transferDesc string  转账描述/备注
+     *   - notifyUrl    string  异步通知地址
+     *   - channelExtra string  渠道扩展参数（JSON字符串）
+     *   - extParam     string  扩展参数
+     * @return array 响应包含 transferId, mchOrderNo, state, channelOrderNo 等
+     * @throws YuePayException
+     */
+    public function transferOrder(array $params): array
+    {
+        if (empty($params['mchOrderNo'])) {
+            throw new YuePayException('商户转账单号不能为空');
+        }
+        if (empty($params['amount']) || (int) $params['amount'] <= 0) {
+            throw new YuePayException('转账金额必须大于0（单位：分）');
+        }
+
+        $config = $this->client->getConfig();
+
+        $requestData = [
+            'mchOrderNo'   => $params['mchOrderNo'],
+            'ifCode'       => $params['ifCode'] ?? '',
+            'entryType'    => $params['entryType'] ?? '',
+            'amount'       => (int) $params['amount'],
+            'currency'     => $config['currency'],
+            'accountNo'    => $params['accountNo'] ?? '',
+            'accountName'  => $params['accountName'] ?? '',
+            'bankName'     => $params['bankName'] ?? '',
+            'clientIp'     => $params['clientIp'] ?? $this->getClientIp(),
+            'transferDesc' => $params['transferDesc'] ?? '',
+            'notifyUrl'    => $params['notifyUrl'] ?? $config['notify_url'],
+            'channelExtra' => $params['channelExtra'] ?? '',
+            'extParam'     => $params['extParam'] ?? '',
+        ];
+
+        // 过滤空字符串
+        $requestData = array_filter($requestData, function ($v) {
+            return $v !== '';
+        });
+
+        return $this->client->post(self::URI_TRANSFER_ORDER, $requestData);
+    }
+
+    /**
+     * 查询转账订单
+     *
+     * @param string      $mchOrderNo  商户转账单号
+     * @param string|null $transferId  粤收付转账订单号
+     * @return array
+     * @throws YuePayException
+     */
+    public function queryTransfer(string $mchOrderNo = '', ?string $transferId = null): array
+    {
+        if (empty($mchOrderNo) && empty($transferId)) {
+            throw new YuePayException('商户转账单号和转账订单号不能同时为空');
+        }
+
+        $params = [];
+        if ($transferId) {
+            $params['transferId'] = $transferId;
+        }
+        if ($mchOrderNo) {
+            $params['mchOrderNo'] = $mchOrderNo;
+        }
+
+        return $this->client->post(self::URI_QUERY_TRANSFER, $params);
+    }
+
+    /**
+     * 查询转账可用余额
+     *
+     * @param string $ifCode 接口代码（如 wxpay, alipay, aliaqfpay）
+     * @return array 响应包含 balanceAmount
+     * @throws YuePayException
+     */
+    public function queryTransferBalance(string $ifCode): array
+    {
+        if (empty($ifCode)) {
+            throw new YuePayException('接口代码(ifCode)不能为空');
+        }
+
+        return $this->client->post(self::URI_TRANSFER_BALANCE, [
+            'ifCode' => $ifCode,
+        ]);
+    }
+
+    /**
+     * 手动提现
+     *
+     * @param array $params 提现参数：
+     *   - mchOrderNo   string  商户提现单号（必填）
+     *   - amount       int     提现金额，单位：分（必填）
+     *   - ifCode       string  接口代码（如 dgpay）
+     *   - channelExtra string  渠道扩展参数（JSON字符串）
+     *   - remark       string  备注
+     * @return array 响应包含 cashoutOrderId, mchOrderNo, state
+     * @throws YuePayException
+     */
+    public function cashoutOrder(array $params): array
+    {
+        if (empty($params['mchOrderNo'])) {
+            throw new YuePayException('商户提现单号不能为空');
+        }
+        if (empty($params['amount']) || (int) $params['amount'] <= 0) {
+            throw new YuePayException('提现金额必须大于0（单位：分）');
+        }
+
+        $requestData = [
+            'mchOrderNo'   => $params['mchOrderNo'],
+            'amount'       => (int) $params['amount'],
+            'ifCode'       => $params['ifCode'] ?? '',
+            'channelExtra' => $params['channelExtra'] ?? '',
+            'remark'       => $params['remark'] ?? '',
+        ];
+
+        $requestData = array_filter($requestData, function ($v) {
+            return $v !== '';
+        });
+
+        return $this->client->post(self::URI_CASHOUT_ORDER, $requestData);
+    }
+
+    /**
+     * 查询提现详情
+     *
+     * @param string      $mchOrderNo     商户提现单号
+     * @param string|null $cashoutOrderId 粤收付提现订单号
+     * @return array 响应包含 cashoutOrderId, state, amount, bankName, accountNo 等
+     * @throws YuePayException
+     */
+    public function queryCashout(string $mchOrderNo = '', ?string $cashoutOrderId = null): array
+    {
+        if (empty($mchOrderNo) && empty($cashoutOrderId)) {
+            throw new YuePayException('商户提现单号和提现订单号不能同时为空');
+        }
+
+        $params = [];
+        if ($cashoutOrderId) {
+            $params['cashoutOrderId'] = $cashoutOrderId;
+        }
+        if ($mchOrderNo) {
+            $params['mchOrderNo'] = $mchOrderNo;
+        }
+
+        return $this->client->post(self::URI_QUERY_CASHOUT, $params);
+    }
+
+    /**
+     * 余额查询（商户账户余额）
+     *
+     * @param string $ifCode       接口代码（如 dgpay）
+     * @param string $channelExtra 渠道扩展参数（JSON字符串，可选）
+     * @return array 响应包含 balance, frozenBalance, totalBalance
+     * @throws YuePayException
+     */
+    public function queryBalance(string $ifCode, string $channelExtra = ''): array
+    {
+        $params = ['ifCode' => $ifCode];
+        if ($channelExtra !== '') {
+            $params['channelExtra'] = $channelExtra;
+        }
+
+        return $this->client->post(self::URI_CASHOUT_BALANCE, $params);
+    }
+
+    /**
+     * 绑定分账用户
+     *
+     * @param array $params 绑定参数：
+     *   - ifCode            string  接口代码（如 wxpay）
+     *   - receiverAlias     string  分账接收方别名
+     *   - receiverGroupId   int     分账接收方组ID
+     *   - accType           int     账户类型（1=个人, 0=企业）
+     *   - accNo             string  接收方账号（微信openid/支付宝userId）
+     *   - accName           string  接收方姓名
+     *   - relationType      string  分账关系类型（如 SERVICE_PROVIDER）
+     *   - relationTypeName  string  分账关系类型名称（可选）
+     *   - channelExtInfo    string  渠道扩展信息（JSON字符串，可选）
+     *   - divisionProfit    string  分账比例（如 "0.3" 表示30%）
+     * @return array 响应包含 receiverId, bindState 等
+     * @throws YuePayException
+     */
+    public function bindDivisionReceiver(array $params): array
+    {
+        $required = ['ifCode', 'receiverAlias', 'receiverGroupId', 'accType', 'accNo', 'accName', 'relationType', 'divisionProfit'];
+        foreach ($required as $field) {
+            if (!isset($params[$field]) || $params[$field] === '') {
+                throw new YuePayException("缺少必填参数: {$field}");
+            }
+        }
+
+        $requestData = [
+            'ifCode'            => $params['ifCode'],
+            'receiverAlias'     => $params['receiverAlias'],
+            'receiverGroupId'   => (int) $params['receiverGroupId'],
+            'accType'           => (int) $params['accType'],
+            'accNo'             => $params['accNo'],
+            'accName'           => $params['accName'],
+            'relationType'      => $params['relationType'],
+            'relationTypeName'  => $params['relationTypeName'] ?? '',
+            'channelExtInfo'    => $params['channelExtInfo'] ?? '',
+            'divisionProfit'    => $params['divisionProfit'],
+        ];
+
+        $requestData = array_filter($requestData, function ($v) {
+            return $v !== '';
+        });
+
+        return $this->client->post(self::URI_BIND_DIVISION_RECEIVER, $requestData);
+    }
+
+    /**
+     * 发起订单分账
+     *
+     * 当统一下单时 divisionMode=2（手动分账），通过此接口发起分账。
+     *
+     * @param array $params 分账参数：
+     *   - payOrderId                   string  粤收付支付订单号
+     *   - mchOrderNo                   string  商户订单号（与payOrderId二选一）
+     *   - useSysAutoDivisionReceivers  int     是否使用系统自动分账接收方（1=是, 0=否）
+     *   - receivers                    string  自定义分账接收方列表（JSON字符串）
+     * @return array 响应包含 state, batchOrderId, channelBatchOrderId
+     * @throws YuePayException
+     */
+    public function execDivision(array $params): array
+    {
+        if (empty($params['payOrderId']) && empty($params['mchOrderNo'])) {
+            throw new YuePayException('支付订单号和商户订单号不能同时为空');
+        }
+
+        $requestData = [
+            'payOrderId'                  => $params['payOrderId'] ?? '',
+            'mchOrderNo'                  => $params['mchOrderNo'] ?? '',
+            'useSysAutoDivisionReceivers' => $params['useSysAutoDivisionReceivers'] ?? 1,
+            'receivers'                   => $params['receivers'] ?? '',
+        ];
+
+        $requestData = array_filter($requestData, function ($v) {
+            return $v !== '';
+        });
+
+        return $this->client->post(self::URI_DIVISION_EXEC, $requestData);
+    }
+
+    /**
+     * 查询订单分账结果
+     *
+     * @param array $params 查询参数：
+     *   - payOrderId   string  粤收付支付订单号
+     *   - mchOrderNo   string  商户订单号（与payOrderId二选一）
+     *   - batchOrderId string  分账批次号（可选）
+     *   - receiverId   int     分账接收方ID（可选）
+     * @return array 响应包含 records（分账记录JSON字符串）
+     * @throws YuePayException
+     */
+    public function queryDivision(array $params): array
+    {
+        $requestData = [
+            'payOrderId'   => $params['payOrderId'] ?? '',
+            'mchOrderNo'   => $params['mchOrderNo'] ?? '',
+            'batchOrderId' => $params['batchOrderId'] ?? '',
+            'receiverId'   => $params['receiverId'] ?? '',
+        ];
+
+        $requestData = array_filter($requestData, function ($v) {
+            return $v !== '';
+        });
+
+        return $this->client->post(self::URI_QUERY_DIVISION, $requestData);
+    }
+
+    /**
+     * 查询分账用户可用余额
+     *
+     * @param int $receiverId 分账接收方ID
+     * @return array 响应包含 receiverId, balanceAmount
+     * @throws YuePayException
+     */
+    public function queryDivisionReceiverBalance(int $receiverId): array
+    {
+        if ($receiverId <= 0) {
+            throw new YuePayException('分账接收方ID不能为空');
+        }
+
+        return $this->client->post(self::URI_DIVISION_RECEIVER_BALANCE, [
+            'receiverId' => $receiverId,
+        ]);
+    }
+
+    /**
+     * 对分账用户的余额发起提现
+     *
+     * 实时调起三方提现接口，将分账用户余额提现到结算银行卡。
+     * 建议调用前先调用 queryDivisionReceiverBalance 查询余额。
+     *
+     * @param int $receiverId    分账接收方ID（由绑定接口返回）
+     * @param int $cashoutAmount 提现金额，单位：分
+     * @return array 响应包含 receiverId, state, errCode, errMsg
+     * @throws YuePayException
+     */
+    public function cashoutDivisionReceiverBalance(int $receiverId, int $cashoutAmount): array
+    {
+        if ($receiverId <= 0) {
+            throw new YuePayException('分账接收方ID不能为空');
+        }
+        if ($cashoutAmount <= 0) {
+            throw new YuePayException('提现金额必须大于0');
+        }
+
+        return $this->client->post(self::URI_DIVISION_RECEIVER_CASHOUT, [
+            'receiverId'    => $receiverId,
+            'cashoutAmount' => $cashoutAmount,
+        ]);
+    }
+
+    /**
+     * 条码换取 openId
+     *
+     * 上送刷卡条码值，换取微信/支付宝的 openId/userId
+     *
+     * @param string      $barCode  付款码条码值
+     * @param string|null $subAppId 子商户appId（可选）
+     * @return array 响应包含 openId, subOpenId
+     * @throws YuePayException
+     */
+    public function queryOpenIdByBarcode(string $barCode, ?string $subAppId = null): array
+    {
+        if (empty($barCode)) {
+            throw new YuePayException('条码(barCode)不能为空');
+        }
+
+        $params = ['barCode' => $barCode];
+        if ($subAppId !== null && $subAppId !== '') {
+            $params['subAppId'] = $subAppId;
+        }
+
+        return $this->client->post(self::URI_QUERY_OPENID_BY_BARCODE, $params);
+    }
+
+    /**
+     * 获取渠道用户ID跳转链接
+     *
+     * 通过页面跳转方式获取渠道用户ID（如微信openID），完成后跳转到商户指定的 redirectUrl
+     *
+     * @param string $ifCode      接口代码（如 wxpay, alipay）
+     * @param string $redirectUrl 获取到用户ID后的跳转地址
+     * @return string 完整的跳转URL（直接302跳转即可）
+     * @throws YuePayException
+     */
+    public function getChannelUserIdUrl(string $ifCode, string $redirectUrl): string
+    {
+        if (empty($ifCode)) {
+            throw new YuePayException('接口代码(ifCode)不能为空');
+        }
+        if (empty($redirectUrl)) {
+            throw new YuePayException('跳转地址(redirectUrl)不能为空');
+        }
+
+        return $this->client->buildUrl(self::URI_CHANNEL_USERID_JUMP, [
+            'ifCode'      => $ifCode,
+            'redirectUrl' => $redirectUrl,
+        ]);
     }
 
     /**

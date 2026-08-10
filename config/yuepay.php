@@ -6,8 +6,8 @@
 
 return [
 
-    // 接口基础地址（沙箱/生产环境切换）
-    'base_url' => env('YUEPAY_BASE_URL', 'https://open.cnyepay.com'),
+    // 接口基础地址（全部接口统一使用此域名）
+    'base_url' => env('YUEPAY_BASE_URL', 'https://pay.cnyepay.com'),
 
     // 商户号
     'mch_no' => env('YUEPAY_MCH_NO', ''),
