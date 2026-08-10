@@ -3,7 +3,7 @@
     "description": "粤收付（cnyepay）支付 SDK for Laravel，支持支付宝/微信/QQ钱包等多种支付方式",
     "type": "library",
     "keywords": ["laravel", "payment", "yuepay", "cnyepay", "粤收付", "支付宝", "微信支付", "RSA2", "聚合支付"],
-    "homepage": "https://github.com/yuepay/yuepay-laravel",
+    "homepage": "https://github.com/huanglin88/yuepay-laravel",
     "license": "MIT",
     "authors": [
         {
@@ -13,7 +13,7 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/yuepay/yuepay-laravel/issues",
+        "issues": "https://github.com/huanglin88/yuepay-laravel/issues",
         "docs": "https://open.cnyepay.com"
     },
     "require": {
