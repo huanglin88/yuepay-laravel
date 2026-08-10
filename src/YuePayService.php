@@ -60,7 +60,8 @@ class YuePayService
      *   - notifyUrl   string  异步通知地址
      *   - returnUrl   string  前端跳转地址
      *   - channelExtra string 渠道扩展参数（JSON字符串）
-     *   - expiredTime int     订单过期时间（秒）
+     *   - expiredTime int/string  订单过期时间（13位毫秒时间戳，可选）
+     *   - orderExpireTime string 同上，别名
      *   - authCode    string  付款码（条码支付必须）
      *   - openid      string  用户openid（JSAPI支付必须）
      * @return array
@@ -83,7 +84,7 @@ class YuePayService
             'notifyUrl'   => $params['notifyUrl'] ?? $config['notify_url'],
             'returnUrl'   => $params['returnUrl'] ?? '',
             'channelExtra' => $params['channelExtra'] ?? '',
-            'expiredTime' => $params['expiredTime'] ?? 0,
+            'orderExpireTime' => $params['expiredTime'] ?? $params['orderExpireTime'] ?? '',
         ];
 
         // JSAPI 支付需要 openid
