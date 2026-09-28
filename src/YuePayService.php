@@ -106,6 +106,10 @@ class YuePayService
             'orderExpireTime' => $params['expiredTime'] ?? $params['orderExpireTime'] ?? '',
         ];
 
+
+        if (isset($params['preOrderType'])) {
+            $requestData['preOrderType'] =  $params['preOrderType'];
+        }
         // JSAPI 支付需要 openid
         if (isset($params['openid'])) {
             $channelExtra = $params['channelExtra'] ?? '{}';
