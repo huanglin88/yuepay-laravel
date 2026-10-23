@@ -6,7 +6,7 @@
 
 | | V1.0 | V2.0（本文档） |
 |---|---|---|
-| 门面 | `YuePay` | `YuePayV2`（`YuePay\V2\V2Facade`） |
+| 门面 | `YuePay` | `YuePayV2`（`YuePay\V2\YuePayV2`） |
 | 服务类 | `YuePay\YuePayService` | `YuePay\V2\V2Service` |
 | 配置键 | `config/yuepay.php` → `yuepay` | `config/yuepay_v2.php` → `yuepay_v2` |
 | 网关/前缀 | `/api/...` | `https://pay.cnyepay.com` + `/api/v2/...` |
@@ -30,7 +30,7 @@ src/V2/
 ├── V2Client.php                      # 信封注入 / RSA2 签名 / 响应验签
 ├── V2Service.php                     # V2.0 全部接口
 ├── V2CallbackHandler.php             # 回调验签
-├── V2Facade.php                      # 门面 YuePayV2
+├── YuePayV2.php                      # 门面 YuePayV2
 ├── V2ServiceProvider.php             # 服务注册
 └── Http/Controllers/V2Controller.php # 示例控制器
 ```
@@ -45,7 +45,7 @@ src/V2/
 "extra": {
     "laravel": {
         "providers": ["YuePay\\YuePayServiceProvider", "YuePay\\V2\\V2ServiceProvider"],
-        "aliases":   { "YuePay": "YuePay\\YuePay", "YuePayV2": "YuePay\\V2\\V2Facade" }
+        "aliases":   { "YuePay": "YuePay\\YuePay", "YuePayV2": "YuePay\\V2\\YuePayV2" }
     }
 }
 ```
@@ -59,7 +59,7 @@ src/V2/
 ],
 'aliases' => [
     'YuePay'   => YuePay\YuePay::class,
-    'YuePayV2' => YuePay\V2\V2Facade::class, // 新增
+    'YuePayV2' => YuePay\V2\YuePayV2::class, // 新增
 ],
 ```
 
@@ -94,7 +94,7 @@ YUEPAY_V2_EXPIRE_TIME_FIELD=expireTime  # 或 expiredTime（见第 10 节）
 ### 4.1 门面方式
 
 ```php
-use YuePay\V2\V2Facade as YuePayV2;
+use YuePay\V2\YuePayV2;
 
 $res = YuePayV2::pay([
     'mchOrderNo' => 'ORDER' . time(),
@@ -104,6 +104,8 @@ $res = YuePayV2::pay([
     'buyerUserId'=> '2088xxxx',     // 或传 'alipayData' => ['buyerUserId' => '...']
 ]);
 ```
+
+> **命名说明**：门面类名遵循 Laravel 惯例（**门面类名 = 它代理的服务名，不加 `Facade` 后缀**；`Facade` 留给抽象基类 `Illuminate\Support\Facades\Facade`），版本号由命名空间 `YuePay\V2` 表达。因此类名是 `YuePay\V2\YuePayV2`，**不是** `V2Facade` —— 请勿改回。短类名与别名一致（都叫 `YuePayV2`），与 V1 的 `YuePay` 在同一文件引用也不会冲突。
 
 ### 4.2 依赖注入
 

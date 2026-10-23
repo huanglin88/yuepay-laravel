@@ -7,8 +7,14 @@ use Illuminate\Support\Facades\Facade;
 /**
  * 粤收付 V2.0 支付门面
  *
- * 与 V1.0 的 {@see \YuePay\YuePay} 并存，互不影响。
- * 在 config/app.php 的 aliases 中注册：'YuePayV2' => YuePay\V2\V2Facade::class
+ * 类名遵循 Laravel 门面惯例（门面类名 = 它代理的服务名，不加 Facade 后缀），
+ * 版本号由命名空间 YuePay\V2 表达。
+ *
+ * 与 V1.0 的 {@see \YuePay\YuePay} 并存，互不影响：
+ *   use YuePay\YuePay;        // V1
+ *   use YuePay\V2\YuePayV2;   // V2（短类名不同，同一文件可同时引入）
+ *
+ * 在 config/app.php 的 aliases 中注册：'YuePayV2' => YuePay\V2\YuePayV2::class
  *
  * @method static array pay(array $params)                                 统一下单（按 wayCode 自动路由渠道）
  * @method static array wechatOrder(array $params)                         微信支付下单
@@ -27,7 +33,7 @@ use Illuminate\Support\Facades\Facade;
  *
  * @see \YuePay\V2\V2Service
  */
-class V2Facade extends Facade
+class YuePayV2 extends Facade
 {
     protected static function getFacadeAccessor(): string
     {

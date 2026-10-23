@@ -35,7 +35,7 @@
             ],
             "aliases": {
                 "YuePay": "YuePay\\YuePay",
-                "YuePayV2": "YuePay\\V2\\V2Facade"
+                "YuePayV2": "YuePay\\V2\\YuePayV2"
             }
         }
     },
