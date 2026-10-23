@@ -30,10 +30,12 @@
     "extra": {
         "laravel": {
             "providers": [
-                "YuePay\\YuePayServiceProvider"
+                "YuePay\\YuePayServiceProvider",
+                "YuePay\\V2\\V2ServiceProvider"
             ],
             "aliases": {
-                "YuePay": "YuePay\\YuePay"
+                "YuePay": "YuePay\\YuePay",
+                "YuePayV2": "YuePay\\V2\\V2Facade"
             }
         }
     },
